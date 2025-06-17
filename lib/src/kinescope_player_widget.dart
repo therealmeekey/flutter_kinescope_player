@@ -1,0 +1,300 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import 'kinescope_player_controller.dart';
+import 'kinescope_player_config.dart';
+
+/// Flutter виджет для отображения плеера Kinescope
+class KinescopePlayerWidget extends StatefulWidget {
+  final String videoId;
+  final KinescopePlayerConfig? config;
+  final KinescopePlayerController? controller;
+  final double? width;
+  final double? height;
+  final BoxFit fit;
+  final Widget? placeholder;
+  final Widget? errorWidget;
+
+  const KinescopePlayerWidget({
+    super.key,
+    required this.videoId,
+    this.config,
+    this.controller,
+    this.width,
+    this.height,
+    this.fit = BoxFit.contain,
+    this.placeholder,
+    this.errorWidget,
+  });
+
+  @override
+  State<KinescopePlayerWidget> createState() => _KinescopePlayerWidgetState();
+}
+
+class _KinescopePlayerWidgetState extends State<KinescopePlayerWidget> {
+  late KinescopePlayerController _controller;
+  int? _viewId;
+  String? _lastError;
+  bool _isViewCreated = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = widget.controller ?? KinescopePlayerController(viewId: 0);
+    // Не инициализируем плеер здесь, дождемся создания AndroidView
+  }
+
+  Future<void> _initializePlayer() async {
+    debugPrint('KinescopePlayer: Initializing player for video: ${widget.videoId}');
+    
+    try {
+      // Инициализируем плеер
+      await _controller.initialize();
+      debugPrint('KinescopePlayer: Player initialized successfully');
+      
+      // Загружаем видео
+      await _loadVideo();
+    } catch (e) {
+      debugPrint('KinescopePlayer: Error during initialization: $e');
+      setState(() {
+        _lastError = 'Ошибка инициализации: $e';
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        if (_controller.error != null || _lastError != null) {
+          return _buildErrorWidget();
+        }
+
+        // Показываем AndroidView сразу, не ждем инициализации
+        return _buildPlayerWidget();
+      },
+    );
+  }
+
+  Widget _buildPlayerWidget() {
+    debugPrint('KinescopePlayer: Building player widget, viewId: $_viewId, isViewCreated: $_isViewCreated');
+    return SizedBox(
+      width: widget.width,
+      height: widget.height,
+      child: AndroidView(
+        viewType: 'flutter_kinescope_player_view',
+        onPlatformViewCreated: _onPlatformViewCreated,
+        creationParams: {
+          'viewId': _viewId ?? 0,
+          'config': widget.config?.toMap(),
+        },
+        creationParamsCodec: const StandardMessageCodec(),
+      ),
+    );
+  }
+
+  Widget _buildPlaceholderWidget() {
+    return widget.placeholder ??
+        Container(
+          color: Colors.black,
+          child: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  color: Colors.white,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Загрузка плеера...',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        );
+  }
+
+  Widget _buildErrorWidget() {
+    final errorMessage =
+        _controller.error ?? _lastError ?? 'Неизвестная ошибка';
+
+    return widget.errorWidget ??
+        Container(
+          color: Colors.black,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    color: Colors.red,
+                    size: 48,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Ошибка загрузки видео',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    errorMessage,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _lastError = null;
+                      });
+                      _initializePlayer();
+                    },
+                    child: const Text('Повторить'),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Video ID: ${widget.videoId}',
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+  }
+
+  void _onPlatformViewCreated(int id) {
+    debugPrint('KinescopePlayer: Platform view created with ID: $id');
+    _viewId = id;
+    _isViewCreated = true;
+    
+    // Обновляем контроллер с правильным viewId
+    _controller = KinescopePlayerController(viewId: id);
+    debugPrint('KinescopePlayer: Controller updated with viewId: $id');
+    
+    // Теперь инициализируем плеер и загружаем видео
+    _initializePlayer();
+  }
+  
+  Future<void> _loadVideo() async {
+    try {
+      debugPrint('KinescopePlayer: Loading video: ${widget.videoId}');
+      await _controller.loadVideo(
+        widget.videoId,
+        config: widget.config,
+      );
+      debugPrint('KinescopePlayer: Video load request sent');
+    } catch (e) {
+      debugPrint('KinescopePlayer: Error loading video: $e');
+      setState(() {
+        _lastError = 'Ошибка загрузки видео: $e';
+      });
+    }
+  }
+}
+
+/// Виджет для полноэкранного режима
+class KinescopeFullscreenPlayer extends StatefulWidget {
+  final String videoId;
+  final KinescopePlayerConfig? config;
+  final VoidCallback? onExitFullscreen;
+
+  const KinescopeFullscreenPlayer({
+    super.key,
+    required this.videoId,
+    this.config,
+    this.onExitFullscreen,
+  });
+
+  @override
+  State<KinescopeFullscreenPlayer> createState() =>
+      _KinescopeFullscreenPlayerState();
+}
+
+class _KinescopeFullscreenPlayerState extends State<KinescopeFullscreenPlayer> {
+  late KinescopePlayerController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = KinescopePlayerController(viewId: 0);
+    _initializeFullscreenPlayer();
+  }
+
+  Future<void> _initializeFullscreenPlayer() async {
+    try {
+      await _controller.initialize();
+      await _controller.loadVideo(
+        widget.videoId,
+        config: widget.config?.copyWith(autoPlay: true),
+      );
+      await _controller.setFullscreen(true);
+    } catch (e) {
+      debugPrint('KinescopeFullscreenPlayer: Error initializing: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // Плеер на весь экран
+            Positioned.fill(
+              child: KinescopePlayerWidget(
+                videoId: widget.videoId,
+                config: widget.config?.copyWith(autoPlay: true),
+                controller: _controller,
+              ),
+            ),
+            // Кнопка выхода из полноэкранного режима
+            Positioned(
+              top: 16,
+              right: 16,
+              child: IconButton(
+                onPressed: () {
+                  _controller.setFullscreen(false);
+                  widget.onExitFullscreen?.call();
+                },
+                icon: const Icon(
+                  Icons.fullscreen_exit,
+                  color: Colors.white,
+                  size: 32,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
