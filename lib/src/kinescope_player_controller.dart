@@ -176,6 +176,7 @@ class KinescopePlayerController extends ChangeNotifier {
   }
 
   /// Очистка ресурсов
+  @override
   Future<void> dispose() async {
     try {
       await _platform.dispose(_viewId);

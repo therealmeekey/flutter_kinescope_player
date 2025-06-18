@@ -1,72 +1,95 @@
-import 'package:flutter/material.dart';
-
 /// Конфигурация для плеера Kinescope
 class KinescopePlayerConfig {
+  /// Автоматическое воспроизведение
   final bool autoPlay;
-  final bool showControls;
-  final bool enableFullscreen;
-  final Color? buttonColor;
-  final Color? progressBarColor;
-  final Color? scrubberColor;
-  final Color? playedColor;
-  final Color? bufferedColor;
-  final String? customButtonIcon;
-  final VoidCallback? onCustomButtonTap;
-  final Function(String, Map<String, dynamic>)? onAnalytics;
+
+  /// Показывать ли кнопку полноэкранного режима
+  final bool showFullscreenButton;
+
+  /// Показывать ли кнопку настроек
+  final bool showOptionsButton;
+
+  /// Показывать ли кнопку субтитров
+  final bool showSubtitlesButton;
+
+  /// Показывать ли полосу прогресса
+  final bool showSeekBar;
+
+  /// Показывать ли длительность
+  final bool showDuration;
+
+  /// Показывать ли вложения
+  final bool showAttachments;
+
+  /// Referer для запросов
+  final String referer;
+
+  /// Дополнительные заголовки для DRM запросов
+  final Map<String, String>? drmHeaders;
 
   const KinescopePlayerConfig({
     this.autoPlay = false,
-    this.showControls = true,
-    this.enableFullscreen = true,
-    this.buttonColor,
-    this.progressBarColor,
-    this.scrubberColor,
-    this.playedColor,
-    this.bufferedColor,
-    this.customButtonIcon,
-    this.onCustomButtonTap,
-    this.onAnalytics,
+    this.showFullscreenButton = true,
+    this.showOptionsButton = true,
+    this.showSubtitlesButton = true,
+    this.showSeekBar = true,
+    this.showDuration = true,
+    this.showAttachments = true,
+    this.referer = 'https://kinescope.io/',
+    this.drmHeaders,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'autoPlay': autoPlay,
-      'showControls': showControls,
-      'enableFullscreen': enableFullscreen,
-      'buttonColor': buttonColor?.value,
-      'progressBarColor': progressBarColor?.value,
-      'scrubberColor': scrubberColor?.value,
-      'playedColor': playedColor?.value,
-      'bufferedColor': bufferedColor?.value,
-      'customButtonIcon': customButtonIcon,
+      'showFullscreenButton': showFullscreenButton,
+      'showOptionsButton': showOptionsButton,
+      'showSubtitlesButton': showSubtitlesButton,
+      'showSeekBar': showSeekBar,
+      'showDuration': showDuration,
+      'showAttachments': showAttachments,
+      'referer': referer,
+      'drmHeaders': drmHeaders,
     };
+  }
+
+  factory KinescopePlayerConfig.fromMap(Map<String, dynamic> map) {
+    return KinescopePlayerConfig(
+      autoPlay: map['autoPlay'] ?? false,
+      showFullscreenButton: map['showFullscreenButton'] ?? true,
+      showOptionsButton: map['showOptionsButton'] ?? true,
+      showSubtitlesButton: map['showSubtitlesButton'] ?? false,
+      showSeekBar: map['showSeekBar'] ?? true,
+      showDuration: map['showDuration'] ?? true,
+      showAttachments: map['showAttachments'] ?? false,
+      referer: map['referer'] ?? 'https://kinescope.io/',
+      drmHeaders: map['drmHeaders'] != null
+          ? Map<String, String>.from(map['drmHeaders'])
+          : null,
+    );
   }
 
   KinescopePlayerConfig copyWith({
     bool? autoPlay,
-    bool? showControls,
-    bool? enableFullscreen,
-    Color? buttonColor,
-    Color? progressBarColor,
-    Color? scrubberColor,
-    Color? playedColor,
-    Color? bufferedColor,
-    String? customButtonIcon,
-    VoidCallback? onCustomButtonTap,
-    Function(String, Map<String, dynamic>)? onAnalytics,
+    bool? showFullscreenButton,
+    bool? showOptionsButton,
+    bool? showSubtitlesButton,
+    bool? showSeekBar,
+    bool? showDuration,
+    bool? showAttachments,
+    String? referer,
+    Map<String, String>? drmHeaders,
   }) {
     return KinescopePlayerConfig(
       autoPlay: autoPlay ?? this.autoPlay,
-      showControls: showControls ?? this.showControls,
-      enableFullscreen: enableFullscreen ?? this.enableFullscreen,
-      buttonColor: buttonColor ?? this.buttonColor,
-      progressBarColor: progressBarColor ?? this.progressBarColor,
-      scrubberColor: scrubberColor ?? this.scrubberColor,
-      playedColor: playedColor ?? this.playedColor,
-      bufferedColor: bufferedColor ?? this.bufferedColor,
-      customButtonIcon: customButtonIcon ?? this.customButtonIcon,
-      onCustomButtonTap: onCustomButtonTap ?? this.onCustomButtonTap,
-      onAnalytics: onAnalytics ?? this.onAnalytics,
+      showFullscreenButton: showFullscreenButton ?? this.showFullscreenButton,
+      showOptionsButton: showOptionsButton ?? this.showOptionsButton,
+      showSubtitlesButton: showSubtitlesButton ?? this.showSubtitlesButton,
+      showSeekBar: showSeekBar ?? this.showSeekBar,
+      showDuration: showDuration ?? this.showDuration,
+      showAttachments: showAttachments ?? this.showAttachments,
+      referer: referer ?? this.referer,
+      drmHeaders: drmHeaders ?? this.drmHeaders,
     );
   }
-} 
+}

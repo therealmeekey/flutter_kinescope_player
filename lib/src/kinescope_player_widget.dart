@@ -14,7 +14,6 @@ class KinescopePlayerWidget extends StatefulWidget {
   final double? width;
   final double? height;
   final BoxFit fit;
-  final Widget? placeholder;
   final Widget? errorWidget;
 
   const KinescopePlayerWidget({
@@ -26,7 +25,6 @@ class KinescopePlayerWidget extends StatefulWidget {
     this.width,
     this.height,
     this.fit = BoxFit.contain,
-    this.placeholder,
     this.errorWidget,
   });
 
@@ -48,17 +46,10 @@ class _KinescopePlayerWidgetState extends State<KinescopePlayerWidget> {
   }
 
   Future<void> _initializePlayer() async {
-    debugPrint(
-        'KinescopePlayer: Initializing player for video: ${widget.videoId}');
     try {
-      // Инициализируем плеер
       await _controller.initialize();
-      debugPrint('KinescopePlayer: Player initialized successfully');
-
-      // Загружаем видео
       await _loadVideo();
     } catch (e) {
-      debugPrint('KinescopePlayer: Error during initialization: $e');
       setState(() {
         _lastError = 'Ошибка инициализации: $e';
       });
@@ -163,13 +154,11 @@ class _KinescopePlayerWidgetState extends State<KinescopePlayerWidget> {
   }
 
   void _onPlatformViewCreated(int id) {
-    debugPrint('KinescopePlayer: Platform view created with ID: $id');
     _viewId = id;
     _isViewCreated = true;
 
     // Обновляем контроллер с правильным viewId
     _controller = KinescopePlayerController(viewId: id);
-    debugPrint('KinescopePlayer: Controller updated with viewId: $id');
 
     // Теперь инициализируем плеер и загружаем видео
     _initializePlayer();
@@ -177,14 +166,13 @@ class _KinescopePlayerWidgetState extends State<KinescopePlayerWidget> {
 
   Future<void> _loadVideo() async {
     try {
-      debugPrint('KinescopePlayer: Loading video: ${widget.videoId}');
       await _controller.loadVideo(
         widget.videoId,
         config: widget.config,
       );
-      debugPrint('KinescopePlayer: Video load request sent');
+
+      // await _controller.play();
     } catch (e) {
-      debugPrint('KinescopePlayer: Error loading video: $e');
       setState(() {
         _lastError = 'Ошибка загрузки видео: $e';
       });

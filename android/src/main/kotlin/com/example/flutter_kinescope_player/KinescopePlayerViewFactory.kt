@@ -8,6 +8,7 @@ import io.flutter.plugin.platform.PlatformView
 import io.flutter.plugin.platform.PlatformViewFactory
 import io.kinescope.sdk.view.KinescopePlayerView
 import io.kinescope.sdk.player.KinescopeVideoPlayer
+import io.kinescope.sdk.player.KinescopePlayerOptions
 
 class KinescopePlayerViewFactory : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
     
@@ -30,8 +31,43 @@ class KinescopePlayerViewFactory : PlatformViewFactory(StandardMessageCodec.INST
                 try {
                     // Применяем конфигурацию к плееру
                     config?.let { cfg ->
-                        // Здесь можно применить настройки из конфигурации
+                        // Применяем настройки из конфигурации
                         Log.d(TAG, "Applying config: $cfg")
+                        
+                        // Применяем referer
+                        val referer = cfg["referer"] as? String
+                        if (referer != null) {
+                            player.setReferer(referer)
+                        }
+                        
+                        // Применяем настройки UI
+                        val showFullscreenButton = cfg["showFullscreenButton"] as? Boolean
+                        if (showFullscreenButton != null) {
+                            player.setShowFullscreen(showFullscreenButton)
+                        }
+                        
+                        val showOptionsButton = cfg["showOptionsButton"] as? Boolean
+                        if (showOptionsButton != null) {
+                            player.setShowOptions(showOptionsButton)
+                        }
+                        
+                        val showSubtitlesButton = cfg["showSubtitlesButton"] as? Boolean
+                        if (showSubtitlesButton != null) {
+                            player.setShowSubtitles(showSubtitlesButton)
+                        }
+                        
+                        // Применяем DRM токен если есть
+                        val drmToken = cfg["drmToken"] as? Map<String, Any>
+                        if (drmToken != null) {
+                            val licenseUrl = drmToken["licenseUrl"] as? String
+                            val token = drmToken["token"] as? String
+                            
+                            if (licenseUrl != null && token != null) {
+                                Log.d(TAG, "Applying DRM token: licenseUrl=$licenseUrl")
+                                // Здесь нужно будет применить DRM токен к плееру
+                                // Это зависит от реализации KinescopeVideoPlayer
+                            }
+                        }
                     }
                     
                     Log.d(TAG, "Player found for viewId: $viewId, initialization successful")
@@ -189,6 +225,31 @@ class KinescopePlayerViewFactory : PlatformViewFactory(StandardMessageCodec.INST
             
             result.success(null)
         }
+        
+        fun forceReleaseAllPlayers() {
+            Log.d(TAG, "Force releasing all players")
+            try {
+                // Останавливаем и освобождаем все плееры
+                players.forEach { (viewId, player) ->
+                    try {
+                        Log.d(TAG, "Force releasing player for viewId: $viewId")
+                        player.pause()
+                        // Если у плеера есть метод release, вызываем его
+                        // player.release()
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Exception while force releasing player for viewId: $viewId", e)
+                    }
+                }
+                
+                // Очищаем все коллекции
+                players.clear()
+                playerViews.clear()
+                
+                Log.d(TAG, "All players force released successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception while force releasing all players", e)
+            }
+        }
     }
 
     override fun create(context: Context, viewId: Int, args: Any?): PlatformView {
@@ -201,8 +262,53 @@ class KinescopePlayerViewFactory : PlatformViewFactory(StandardMessageCodec.INST
             val playerView = KinescopePlayerView(context, null)
             Log.d(TAG, "KinescopePlayerView created successfully")
             
-            // Создаем KinescopeVideoPlayer
-            val player = KinescopeVideoPlayer(context)
+            // Создаем KinescopeVideoPlayer с опциями
+            val playerOptions = KinescopePlayerOptions()
+            
+            // Применяем конфигурацию из creationParams
+            creationParams?.let { params ->
+                val config = params["config"] as? Map<String, Any>
+                config?.let { cfg ->
+                    // Применяем referer
+                    val referer = cfg["referer"] as? String
+                    if (referer != null) {
+                        playerOptions.referer = referer
+                    }
+                    
+                    // Применяем настройки UI
+                    val showFullscreenButton = cfg["showFullscreenButton"] as? Boolean
+                    if (showFullscreenButton != null) {
+                        playerOptions.showFullscreenButton = showFullscreenButton
+                    }
+                    
+                    val showOptionsButton = cfg["showOptionsButton"] as? Boolean
+                    if (showOptionsButton != null) {
+                        playerOptions.showOptionsButton = showOptionsButton
+                    }
+                    
+                    val showSubtitlesButton = cfg["showSubtitlesButton"] as? Boolean
+                    if (showSubtitlesButton != null) {
+                        playerOptions.showSubtitlesButton = showSubtitlesButton
+                    }
+                    
+                    val showSeekBar = cfg["showSeekBar"] as? Boolean
+                    if (showSeekBar != null) {
+                        playerOptions.showSeekBar = showSeekBar
+                    }
+                    
+                    val showDuration = cfg["showDuration"] as? Boolean
+                    if (showDuration != null) {
+                        playerOptions.showDuration = showDuration
+                    }
+                    
+                    val showAttachments = cfg["showAttachments"] as? Boolean
+                    if (showAttachments != null) {
+                        playerOptions.showAttachments = showAttachments
+                    }
+                }
+            }
+            
+            val player = KinescopeVideoPlayer(context, playerOptions)
             Log.d(TAG, "KinescopeVideoPlayer created successfully")
             
             // Устанавливаем плеер в view
