@@ -10,6 +10,7 @@ class KinescopePlayerWidget extends StatefulWidget {
   final String videoId;
   final KinescopePlayerConfig? config;
   final KinescopePlayerController? controller;
+  final double aspectRatio;
   final double? width;
   final double? height;
   final BoxFit fit;
@@ -19,6 +20,7 @@ class KinescopePlayerWidget extends StatefulWidget {
   const KinescopePlayerWidget({
     super.key,
     required this.videoId,
+    this.aspectRatio = 16 / 9,
     this.config,
     this.controller,
     this.width,
@@ -46,13 +48,13 @@ class _KinescopePlayerWidgetState extends State<KinescopePlayerWidget> {
   }
 
   Future<void> _initializePlayer() async {
-    debugPrint('KinescopePlayer: Initializing player for video: ${widget.videoId}');
-    
+    debugPrint(
+        'KinescopePlayer: Initializing player for video: ${widget.videoId}');
     try {
       // Инициализируем плеер
       await _controller.initialize();
       debugPrint('KinescopePlayer: Player initialized successfully');
-      
+
       // Загружаем видео
       await _loadVideo();
     } catch (e) {
@@ -71,56 +73,32 @@ class _KinescopePlayerWidgetState extends State<KinescopePlayerWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        if (_controller.error != null || _lastError != null) {
-          return _buildErrorWidget();
-        }
-
-        // Показываем AndroidView сразу, не ждем инициализации
-        return _buildPlayerWidget();
-      },
-    );
-  }
-
-  Widget _buildPlayerWidget() {
-    debugPrint('KinescopePlayer: Building player widget, viewId: $_viewId, isViewCreated: $_isViewCreated');
-    return SizedBox(
-      width: widget.width,
-      height: widget.height,
-      child: AndroidView(
-        viewType: 'flutter_kinescope_player_view',
-        onPlatformViewCreated: _onPlatformViewCreated,
-        creationParams: {
-          'viewId': _viewId ?? 0,
-          'config': widget.config?.toMap(),
+    return AspectRatio(
+      aspectRatio: widget.aspectRatio,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          if (_controller.error != null || _lastError != null) {
+            return _buildErrorWidget();
+          }
+          return _buildPlayerWidget();
         },
-        creationParamsCodec: const StandardMessageCodec(),
       ),
     );
   }
 
-  Widget _buildPlaceholderWidget() {
-    return widget.placeholder ??
-        Container(
-          color: Colors.black,
-          child: const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(
-                  color: Colors.white,
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'Загрузка плеера...',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ],
-            ),
-          ),
-        );
+  Widget _buildPlayerWidget() {
+    debugPrint(
+        'KinescopePlayer: Building player widget, viewId: $_viewId, isViewCreated: $_isViewCreated');
+    return AndroidView(
+      viewType: 'flutter_kinescope_player_view',
+      onPlatformViewCreated: _onPlatformViewCreated,
+      creationParams: {
+        'viewId': _viewId ?? 0,
+        'config': widget.config?.toMap(),
+      },
+      creationParamsCodec: const StandardMessageCodec(),
+    );
   }
 
   Widget _buildErrorWidget() {
@@ -188,15 +166,15 @@ class _KinescopePlayerWidgetState extends State<KinescopePlayerWidget> {
     debugPrint('KinescopePlayer: Platform view created with ID: $id');
     _viewId = id;
     _isViewCreated = true;
-    
+
     // Обновляем контроллер с правильным viewId
     _controller = KinescopePlayerController(viewId: id);
     debugPrint('KinescopePlayer: Controller updated with viewId: $id');
-    
+
     // Теперь инициализируем плеер и загружаем видео
     _initializePlayer();
   }
-  
+
   Future<void> _loadVideo() async {
     try {
       debugPrint('KinescopePlayer: Loading video: ${widget.videoId}');
@@ -268,7 +246,6 @@ class _KinescopeFullscreenPlayerState extends State<KinescopeFullscreenPlayer> {
       body: SafeArea(
         child: Stack(
           children: [
-            // Плеер на весь экран
             Positioned.fill(
               child: KinescopePlayerWidget(
                 videoId: widget.videoId,
@@ -276,7 +253,6 @@ class _KinescopeFullscreenPlayerState extends State<KinescopeFullscreenPlayer> {
                 controller: _controller,
               ),
             ),
-            // Кнопка выхода из полноэкранного режима
             Positioned(
               top: 16,
               right: 16,
