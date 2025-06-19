@@ -9,6 +9,13 @@ import io.flutter.plugin.platform.PlatformViewFactory
 import io.kinescope.sdk.view.KinescopePlayerView
 import io.kinescope.sdk.player.KinescopeVideoPlayer
 import io.kinescope.sdk.player.KinescopePlayerOptions
+import android.app.Activity
+import android.view.View
+import android.view.WindowManager
+import android.widget.FrameLayout
+import android.content.pm.ActivityInfo
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 
 class KinescopePlayerViewFactory : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
     
@@ -17,6 +24,11 @@ class KinescopePlayerViewFactory : PlatformViewFactory(StandardMessageCodec.INST
         private var nextViewId = 1
         private val players = mutableMapOf<Int, KinescopeVideoPlayer>()
         private val playerViews = mutableMapOf<Int, KinescopePlayerView>()
+        var activity: Activity? = null
+        private var fullscreenContainer: FrameLayout? = null
+        private var fullscreenPlayerView: KinescopePlayerView? = null
+        private val fullscreenStates = mutableMapOf<Int, Boolean>()
+        private var eventChannel: MethodChannel? = null
         
         fun createViewId(): Int {
             return nextViewId++
@@ -194,14 +206,68 @@ class KinescopePlayerViewFactory : PlatformViewFactory(StandardMessageCodec.INST
         }
         
         fun setFullscreen(viewId: Int, fullscreen: Boolean, result: MethodChannel.Result) {
-            Log.d(TAG, "Setting fullscreen: $fullscreen for viewId: $viewId")
+            Log.d(TAG, "setFullscreen called for viewId=$viewId, fullscreen=$fullscreen")
             val playerView = playerViews[viewId]
-            if (playerView != null) {
-                // Здесь должна быть логика переключения полноэкранного режима
-                // В реальной реализации нужно будет создать отдельную Activity для полноэкранного режима
+            val player = players[viewId]
+            val act = activity
+            if (playerView != null && player != null && act != null) {
+                if (fullscreen) {
+                    act.window.setFlags(
+                        WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                        WindowManager.LayoutParams.FLAG_FULLSCREEN
+                    )
+                    act.window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+                    act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+
+                    if (fullscreenContainer == null) {
+                        fullscreenContainer = FrameLayout(act)
+                        fullscreenContainer!!.layoutParams = FrameLayout.LayoutParams(
+                            FrameLayout.LayoutParams.MATCH_PARENT,
+                            FrameLayout.LayoutParams.MATCH_PARENT
+                        )
+                        (act.window.decorView as? FrameLayout)?.addView(fullscreenContainer)
+                    }
+                    if (fullscreenPlayerView == null) {
+                        fullscreenPlayerView = KinescopePlayerView(act, null)
+                        fullscreenPlayerView!!.setPlayer(player)
+                        fullscreenPlayerView!!.onFullscreenButtonCallback = {
+                            Log.d(TAG, "onFullscreenButtonCallback triggered for fullscreenPlayerView, viewId=$viewId")
+                            toggleFullscreen(viewId)
+                        }
+                        applyBottomInset(fullscreenPlayerView!!)
+                        fullscreenContainer!!.addView(fullscreenPlayerView,
+                            FrameLayout.LayoutParams(
+                                FrameLayout.LayoutParams.MATCH_PARENT,
+                                FrameLayout.LayoutParams.MATCH_PARENT
+                            )
+                        )
+                    }
+                    KinescopePlayerView.switchTargetView(playerView, fullscreenPlayerView, player)
+                    fullscreenPlayerView?.setIsFullscreen(true)
+                    playerView.setIsFullscreen(false)
+                    fullscreenStates[viewId] = true
+                    Log.d(TAG, "Entered fullscreen for viewId=$viewId")
+                } else {
+                    act.window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+                    act.window.decorView.systemUiVisibility =
+                        View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                    if (fullscreenPlayerView != null) {
+                        KinescopePlayerView.switchTargetView(fullscreenPlayerView, playerView, player)
+                        fullscreenPlayerView?.setIsFullscreen(false)
+                        playerView.setIsFullscreen(false)
+                        fullscreenContainer?.removeView(fullscreenPlayerView)
+                        fullscreenPlayerView = null
+                    }
+                    (act.window.decorView as? FrameLayout)?.removeView(fullscreenContainer)
+                    fullscreenContainer = null
+                    fullscreenStates[viewId] = false
+                    Log.d(TAG, "Exited fullscreen for viewId=$viewId")
+                }
                 result.success(null)
             } else {
-                result.error("PLAYER_VIEW_NOT_FOUND", "Player view not found for viewId: $viewId", null)
+                Log.e(TAG, "PLAYER_VIEW_NOT_FOUND: Player view or activity not found for viewId: $viewId")
+                result.error("PLAYER_VIEW_NOT_FOUND", "Player view or activity not found for viewId: $viewId", null)
             }
         }
         
@@ -248,6 +314,45 @@ class KinescopePlayerViewFactory : PlatformViewFactory(StandardMessageCodec.INST
                 Log.d(TAG, "All players force released successfully")
             } catch (e: Exception) {
                 Log.e(TAG, "Exception while force releasing all players", e)
+            }
+        }
+        
+        fun setEventChannel(channel: MethodChannel?) {
+            eventChannel = channel
+        }
+        
+        private fun toggleFullscreen(viewId: Int) {
+            val isFullscreen = fullscreenStates[viewId] ?: false
+            val newState = !isFullscreen
+            // Отправляем событие во Flutter
+            eventChannel?.invokeMethod("onTapFullscreen", mapOf(
+                "viewId" to viewId,
+                "isFullscreen" to newState
+            ))
+            Log.d(TAG, "toggleFullscreen called for viewId=$viewId, isFullscreen=$isFullscreen")
+            setFullscreen(viewId, newState, object : MethodChannel.Result {
+                override fun success(result: Any?) {
+                    Log.d(TAG, "setFullscreen success for viewId=$viewId, newState=$newState")
+                }
+                override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
+                    Log.e(TAG, "setFullscreen error: $errorCode $errorMessage")
+                }
+                override fun notImplemented() {
+                    Log.e(TAG, "setFullscreen not implemented")
+                }
+            })
+        }
+        
+        private fun applyBottomInset(view: View) {
+            ViewCompat.setOnApplyWindowInsetsListener(view) { v, insets ->
+                val systemInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+                v.setPadding(
+                    v.paddingLeft,
+                    v.paddingTop,
+                    v.paddingRight,
+                    systemInsets.bottom // только нижний отступ
+                )
+                insets
             }
         }
     }
@@ -314,6 +419,12 @@ class KinescopePlayerViewFactory : PlatformViewFactory(StandardMessageCodec.INST
             // Устанавливаем плеер в view
             playerView.setPlayer(player)
             Log.d(TAG, "Player set to view successfully")
+            
+            // Подписка на событие полноэкранного режима через единый callback
+            playerView.onFullscreenButtonCallback = {
+                Log.d(TAG, "onFullscreenButtonCallback triggered for playerView, viewId=$viewId")
+                toggleFullscreen(viewId)
+            }
             
             // Сохраняем ссылки СРАЗУ при создании
             players[viewId] = player

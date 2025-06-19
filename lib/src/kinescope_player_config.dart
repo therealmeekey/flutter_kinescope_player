@@ -31,10 +31,10 @@ class KinescopePlayerConfig {
     this.autoPlay = false,
     this.showFullscreenButton = true,
     this.showOptionsButton = true,
-    this.showSubtitlesButton = true,
+    this.showSubtitlesButton = false,
     this.showSeekBar = true,
     this.showDuration = true,
-    this.showAttachments = true,
+    this.showAttachments = false,
     this.referer = 'https://kinescope.io/',
     this.drmHeaders,
   });

@@ -15,17 +15,22 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.app.Activity
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 
 /** FlutterKinescopePlayerPlugin */
-class FlutterKinescopePlayerPlugin : FlutterPlugin, MethodCallHandler {
+class FlutterKinescopePlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     /// The MethodChannel that will the communication between Flutter and native Android
     ///
     /// This local reference serves to register the plugin with the FlutterEngine and unregister it
     /// when the FlutterEngine is detached from the Activity
     private lateinit var channel: MethodChannel
     private lateinit var drmChannel: MethodChannel
+    private var eventChannel: MethodChannel? = null
 //    private var drmHelper: KinescopeDrmHelper? = null
     private var context: Context? = null
+    private var activity: Activity? = null
 
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         context = flutterPluginBinding.applicationContext
@@ -36,10 +41,33 @@ class FlutterKinescopePlayerPlugin : FlutterPlugin, MethodCallHandler {
             MethodChannel(flutterPluginBinding.binaryMessenger, "flutter_kinescope_player_drm")
         drmChannel.setMethodCallHandler(this)
 
+        eventChannel = MethodChannel(flutterPluginBinding.binaryMessenger, "flutter_kinescope_player_events")
+        KinescopePlayerViewFactory.setEventChannel(eventChannel)
+
         // Регистрируем фабрику для создания нативных view
         flutterPluginBinding
             .platformViewRegistry
             .registerViewFactory("flutter_kinescope_player_view", KinescopePlayerViewFactory())
+    }
+
+    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+        activity = binding.activity
+        KinescopePlayerViewFactory.activity = activity
+    }
+
+    override fun onDetachedFromActivityForConfigChanges() {
+        activity = null
+        KinescopePlayerViewFactory.activity = null
+    }
+
+    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+        activity = binding.activity
+        KinescopePlayerViewFactory.activity = activity
+    }
+
+    override fun onDetachedFromActivity() {
+        activity = null
+        KinescopePlayerViewFactory.activity = null
     }
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
