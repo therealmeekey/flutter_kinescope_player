@@ -78,8 +78,19 @@ class PlayerController extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      await _platform.loadVideo(_viewId, videoId, config?.toMap());
+      final result = await _platform.loadVideo(
+        _viewId,
+        videoId,
+        config?.toMap(),
+      );
 
+      if (config?.isLive ?? false) {
+        await setLiveState(true);
+        if (result['liveStartDate'] != null &&
+            result['liveStartDate'].toString().isNotEmpty) {
+          await showLiveStartDate(result['liveStartDate']);
+        }
+      }
       // Если включен автоплей, запускаем видео
       if (config?.autoPlay == true) {
         await play();
@@ -250,6 +261,16 @@ class PlayerController extends ChangeNotifier {
       notifyListeners();
       return 0;
     }
+  }
+
+  /// Включить live-режим (вызывает setLiveState на платформе)
+  Future<void> setLiveState(bool isLive) async {
+    await _platform.setLiveState(_viewId, isLive);
+  }
+
+  /// Показать дату старта live (вызывает showLiveStartDate на платформе)
+  Future<void> showLiveStartDate(String startDate) async {
+    await _platform.showLiveStartDate(_viewId, startDate);
   }
 
   @override

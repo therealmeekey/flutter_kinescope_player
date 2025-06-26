@@ -21,7 +21,7 @@ class MethodChannelFlutterKinescopePlayer extends FlutterKinescopePlayerPlatform
   }
 
   @override
-  Future<void> loadVideo(int viewId, String videoId, [Map<String, dynamic>? config]) async {
+  Future<Map<String, dynamic>> loadVideo(int viewId, String videoId, [Map<String, dynamic>? config]) async {
     final params = {
       'viewId': viewId,
       'videoId': videoId,
@@ -29,7 +29,11 @@ class MethodChannelFlutterKinescopePlayer extends FlutterKinescopePlayerPlatform
     if (config != null) {
       params['config'] = config;
     }
-    await methodChannel.invokeMethod('loadVideo', params);
+    final result = await methodChannel.invokeMethod('loadVideo', params);
+    if (result is Map) {
+      return Map<String, dynamic>.from(result);
+    }
+    return {};
   }
 
   @override
@@ -98,6 +102,14 @@ class MethodChannelFlutterKinescopePlayer extends FlutterKinescopePlayerPlatform
     await methodChannel.invokeMethod('setLiveState', {
       'viewId': viewId,
       'isLive': isLive,
+    });
+  }
+
+  @override
+  Future<void> showLiveStartDate(int viewId, String startDate) async {
+    await methodChannel.invokeMethod('showLiveStartDate', {
+      'viewId': viewId,
+      'startDate': startDate,
     });
   }
 } 

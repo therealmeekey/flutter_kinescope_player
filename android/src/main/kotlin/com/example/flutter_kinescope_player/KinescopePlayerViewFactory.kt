@@ -154,11 +154,20 @@ class KinescopePlayerViewFactory : PlatformViewFactory(StandardMessageCodec.INST
                             }
                         }
                         try {
+                            if (video?.isLive == true) {
+                                playerViews[viewId]?.setLiveState()
+                                val startDate = video.live?.startsAt
+                                if (!startDate.isNullOrEmpty()) {
+                                    playerViews[viewId]?.showLiveStartDate(startDate)
+                                }
+                            }
                             result.success(
                                 mapOf(
                                     "success" to true,
                                     "title" to video?.title,
-                                    "duration" to video?.duration
+                                    "duration" to video?.duration,
+                                    "isLive" to (video?.isLive ?: false),
+                                    "liveStartDate" to (video?.live?.startsAt ?: "")
                                 )
                             )
                         } catch (e: Exception) {
@@ -610,7 +619,7 @@ class KinescopePlayerViewFactory : PlatformViewFactory(StandardMessageCodec.INST
             val config = params["config"] as? Map<String, Any>
             config?.let { cfg ->
                 useCustomFullscreen = cfg["useCustomFullscreen"] as? Boolean ?: false
-                // isLive
+                // Если явно указан isLive, сразу включаем live-режим
                 val isLive = cfg["isLive"] as? Boolean ?: false
                 if (isLive) {
                     playerViews[viewId]?.setLiveState()

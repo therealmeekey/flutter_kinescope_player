@@ -196,6 +196,17 @@ class FlutterKinescopePlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityA
                 }
             }
 
+            "showLiveStartDate" -> {
+                val viewId = call.argument<Int>("viewId")
+                val startDate = call.argument<String>("startDate")
+                if (viewId != null && startDate != null) {
+                    KinescopePlayerViewFactory.playerViews[viewId]?.showLiveStartDate(startDate)
+                    result.success(null)
+                } else {
+                    result.error("INVALID_ARGUMENT", "viewId and startDate are required", null)
+                }
+            }
+
             else -> {
                 result.notImplemented()
             }

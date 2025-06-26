@@ -32,7 +32,7 @@ abstract class FlutterKinescopePlayerPlatform extends PlatformInterface {
     throw UnimplementedError('initializePlayer() has not been implemented.');
   }
 
-  Future<void> loadVideo(int viewId, String videoId, [Map<String, dynamic>? config]) {
+  Future<Map<String, dynamic>> loadVideo(int viewId, String videoId, [Map<String, dynamic>? config]) {
     throw UnimplementedError('loadVideo() has not been implemented.');
   }
 
@@ -74,5 +74,9 @@ abstract class FlutterKinescopePlayerPlatform extends PlatformInterface {
 
   Future<void> setLiveState(int viewId, bool isLive) {
     throw UnimplementedError('setLiveState() has not been implemented.');
+  }
+
+  Future<void> showLiveStartDate(int viewId, String startDate) {
+    throw UnimplementedError('showLiveStartDate() has not been implemented.');
   }
 }
